@@ -1,38 +1,33 @@
 name: Deploy to personal page
-#Deploy on push
+
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+
 jobs:
-  deploy-to-github-page:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-    #Checkout code
-    - uses: actions/checkout@v2
-    # sets up .NET Core SDK
-    - name: Setup .NET Core SDK
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 9.0.x
+      # Checkout the code
+      - uses: actions/checkout@v4
 
-    # publishes Blazor project to the release-folder
-    - name: Publish .NET Core Project
-      run: dotnet publish BlazorWebpage.csproj -c Release -o release --nologo
-    
-    - name: Change base-tag in index.html from / to BlazorWebpage
-      run: sed -i 's/<base href="\/" \/>/<base href="\/BlazorWebpage\/" \/>/g' wwwroot/index.html
-    
-    # copy index.html to 404.html to serve the same file when a file is not found
-    - name: copy index.html to 404.html
-      run: cp wwwroot/index.html wwwroot/404.html
+      # Install .NET SDK
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Install .NET WebAssembly Tools
+        run: dotnet workload install wasm-tools
 
-    # add .nojekyll file to tell GitHub pages to not treat this as a Jekyll project. (Allow files and folders starting with an underscore)
-    - name: Add .nojekyll file
-      run: touch wwwroot/.nojekyll
-      
-    - name: Commit wwwroot to GitHub Pages
-      uses: JamesIves/github-pages-deploy-action@3.7.1
-      with:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        BRANCH: gh-pages
-        FOLDER: wwwroot
+      # Publish the site
+      - name: Publish
+        run: dotnet publish BlazorWebpage.sln -c:Release -o:publish -p:GHPages=true
+
+      # Deploy the site
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: publish/wwwroot
+          force_orphan: true
